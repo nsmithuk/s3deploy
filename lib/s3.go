@@ -133,7 +133,7 @@ func (s *s3Store) InvalidateCDNCache(paths ...string) error {
 
 func (s *s3Store) TrimKey(key string) string {
 	if strings.HasSuffix(key, "/index.html") {
-		return strings.TrimRight(key, "/index.html")
+		return strings.TrimSuffix(key, "/index.html")
 	}
 	return key
 }
