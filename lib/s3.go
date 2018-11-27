@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"strings"
 )
 
 var (
@@ -72,7 +73,7 @@ func (s *s3Store) FileMap(opts ...opOption) (map[string]file, error) {
 		Bucket: aws.String(s.bucket),
 	}, func(res *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
 		for _, o := range res.Contents {
-			m[*o.Key] = &s3File{o: o}
+			m[s.AddKeySuffix(*o.Key)] = &s3File{o: o}
 		}
 		return true
 	})
@@ -95,7 +96,7 @@ func (s *s3Store) Put(ctx context.Context, f localFile, opts ...opOption) error 
 
 	_, err := s.svc.PutObjectWithContext(ctx, &s3.PutObjectInput{
 		Bucket:        aws.String(s.bucket),
-		Key:           aws.String(f.Key()),
+		Key:           aws.String(s.TrimKey(f.Key())),
 		Body:          f.Content(),
 		ACL:           aws.String("public-read"),
 		ContentLength: aws.Int64(f.Size()),
@@ -128,4 +129,18 @@ func (s *s3Store) InvalidateCDNCache(paths ...string) error {
 		return nil
 	}
 	return s.cfc.InvalidateCDNCache(paths...)
+}
+
+func (s *s3Store) TrimKey(key string) string {
+	if strings.HasSuffix(key, "/index.html") {
+		return strings.TrimRight(key, "/index.html")
+	}
+	return key
+}
+
+func (s *s3Store) AddKeySuffix(key string) string {
+	if !strings.Contains(key, ".") {
+		return key + "/index.html"
+	}
+	return key
 }
